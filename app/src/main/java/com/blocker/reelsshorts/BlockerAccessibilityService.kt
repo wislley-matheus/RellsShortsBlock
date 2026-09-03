@@ -15,11 +15,10 @@ import android.widget.Toast
  *
  * Observação importante: o Instagram e o YouTube mudam a estrutura interna
  * de telas (resource-id, texto etc.) com frequência a cada atualização.
- * Por isso a detecção aqui é feita de forma heurística, combinando vários
- * sinais (resource-id, content-description, nome de classe) em vez de
- * depender de um único identificador exato. Se algum dia parar de
- * funcionar após uma atualização do app, normalmente basta adicionar
- * novos termos às listas KEYWORDS_* abaixo.
+ * Por isso a detecção aqui é feita de forma heurística, procurando por
+ * identificadores exclusivos da tela cheia de Reels/Shorts (não do feed
+ * normal). Se algum dia parar de funcionar após uma atualização do app,
+ * normalmente basta adicionar novos termos às listas KEYWORDS abaixo.
  */
 class BlockerAccessibilityService : AccessibilityService() {
 
@@ -34,30 +33,22 @@ class BlockerAccessibilityService : AccessibilityService() {
         private const val PKG_INSTAGRAM = "com.instagram.android"
         private const val PKG_YOUTUBE = "com.google.android.youtube"
 
-        // Termos usados para identificar a tela/aba de Reels dentro do Instagram.
+        // Termos usados para identificar a TELA EM TELA CHEIA de Reels dentro do
+        // Instagram (não o feed normal, que também contém prévias/trays de Reels
+        // e por isso não pode entrar aqui, ou o app inteiro fica bloqueado).
         // Internamente o Instagram ainda usa o nome "clips" para Reels em vários ids.
         private val INSTAGRAM_REEL_ID_KEYWORDS = listOf(
             "clips_viewer_view_pager",
             "clips_swipe_refresh_container",
-            "clips_tab",
-            "reels_tray",
-            "clips_viewer",
-            "reel_viewer"
-        )
-        private val INSTAGRAM_REEL_DESC_KEYWORDS = listOf(
-            "reels", "reel"
+            "clips_viewer_fragment"
         )
 
-        // Termos usados para identificar a tela/aba de Shorts dentro do YouTube.
+        // Termos usados para identificar a TELA EM TELA CHEIA de Shorts dentro do YouTube
+        // (não a prateleira de Shorts que aparece na home normal do app).
         private val YOUTUBE_SHORTS_ID_KEYWORDS = listOf(
+            "reel_player_page_container",
             "reel_recycler",
-            "reel_player",
-            "shorts_player",
-            "reel_watch",
-            "shorts_shelf"
-        )
-        private val YOUTUBE_SHORTS_DESC_KEYWORDS = listOf(
-            "shorts", "short"
+            "reel_watch_player"
         )
 
         private const val MAX_NODES_TO_SCAN = 400
@@ -90,50 +81,25 @@ class BlockerAccessibilityService : AccessibilityService() {
     // ---------- Detecção ----------
 
     private fun isInstagramShowingReels(event: AccessibilityEvent): Boolean {
-        // 1) Clique direto na aba/botão "Reels" da barra inferior ou de um card de reel.
-        val source = event.source
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED && source != null) {
-            val desc = source.contentDescription?.toString()?.lowercase()
-            if (desc != null && INSTAGRAM_REEL_DESC_KEYWORDS.any { desc.contains(it) }) {
-                return true
-            }
-        }
-
-        // 2) Varredura da árvore de nós à procura de identificadores conhecidos da tela de Reels.
         val root = rootInActiveWindow ?: return false
-        return nodeTreeContainsKeyword(
-            root = root,
-            idKeywords = INSTAGRAM_REEL_ID_KEYWORDS,
-            descKeywords = emptyList() // descrição sozinha gera falsos positivos demais no feed normal
-        )
+        return nodeTreeContainsIdKeyword(root, INSTAGRAM_REEL_ID_KEYWORDS)
     }
 
     private fun isYoutubeShowingShorts(event: AccessibilityEvent): Boolean {
-        val source = event.source
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED && source != null) {
-            val desc = source.contentDescription?.toString()?.lowercase()
-            if (desc != null && YOUTUBE_SHORTS_DESC_KEYWORDS.any { desc.contains(it) }) {
-                return true
-            }
-        }
-
         val root = rootInActiveWindow ?: return false
-        return nodeTreeContainsKeyword(
-            root = root,
-            idKeywords = YOUTUBE_SHORTS_ID_KEYWORDS,
-            descKeywords = emptyList()
-        )
+        return nodeTreeContainsIdKeyword(root, YOUTUBE_SHORTS_ID_KEYWORDS)
     }
 
     /**
      * Percorre a árvore de nós de acessibilidade (com limite de segurança)
-     * procurando um resource-id ou content-description que bata com alguma
-     * das palavras-chave informadas.
+     * procurando um resource-id que bata com alguma das palavras-chave informadas.
+     * Usamos só resource-id (não content-description) porque descrições de posts
+     * comuns do feed às vezes contêm palavras como "reel"/"shorts" na legenda,
+     * o que gerava falso positivo e bloqueava o app inteiro.
      */
-    private fun nodeTreeContainsKeyword(
+    private fun nodeTreeContainsIdKeyword(
         root: AccessibilityNodeInfo,
-        idKeywords: List<String>,
-        descKeywords: List<String>
+        idKeywords: List<String>
     ): Boolean {
         var scanned = 0
         val queue = ArrayDeque<AccessibilityNodeInfo>()
@@ -146,13 +112,6 @@ class BlockerAccessibilityService : AccessibilityService() {
             val viewId = node.viewIdResourceName?.lowercase()
             if (viewId != null && idKeywords.any { viewId.contains(it) }) {
                 return true
-            }
-
-            if (descKeywords.isNotEmpty()) {
-                val desc = node.contentDescription?.toString()?.lowercase()
-                if (desc != null && descKeywords.any { desc.contains(it) }) {
-                    return true
-                }
             }
 
             for (i in 0 until node.childCount) {
