@@ -1,0 +1,39 @@
+name: Build APK
+
+# Roda automaticamente a cada push/PR na branch main,
+# e também pode ser disparado manualmente pela aba "Actions" do GitHub.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar APK (debug)
+        run: gradle assembleDebug --no-daemon
+
+      - name: Enviar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReelsShortsBlocker-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
