@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Bloqueador de Reels/Shorts</string>
+    <string name="accessibility_service_description">Detecta quando a tela de Reels do Instagram ou de Shorts do YouTube é aberta e volta automaticamente para a tela anterior.</string>
+
+    <string name="title_status">Status do serviço</string>
+    <string name="status_enabled">Serviço de acessibilidade: ATIVO</string>
+    <string name="status_disabled">Serviço de acessibilidade: DESATIVADO</string>
+    <string name="btn_open_settings">Ativar nas Configurações de Acessibilidade</string>
+
+    <string name="switch_instagram">Bloquear Reels (Instagram)</string>
+    <string name="switch_youtube">Bloquear Shorts (YouTube)</string>
+
+    <string name="stats_title">Estatísticas</string>
+    <string name="stats_reels">Reels bloqueados: %1$d</string>
+    <string name="stats_shorts">Shorts bloqueados: %1$d</string>
+    <string name="btn_reset_stats">Zerar estatísticas</string>
+
+    <string name="help_text">Depois de tocar no botão acima, procure "Bloqueador de Reels/Shorts" na lista de serviços de acessibilidade e ative-o. O Android pode exibir um aviso padrão sobre permissões — isso é normal para qualquer app que usa este tipo de serviço.</string>
+</resources>
